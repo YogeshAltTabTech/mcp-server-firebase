@@ -100,7 +100,7 @@ class FirebaseMcpServer {
                       description: 'Comparison operator'
                     },
                     value: {
-                      type: 'any',
+                      type: ['string', 'number', 'boolean', 'object', 'array', 'null'],
                       description: 'Value to compare against (use ISO format for dates)'
                     }
                   },
