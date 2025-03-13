@@ -1,4 +1,4 @@
-import { Query, Timestamp } from 'firebase-admin/firestore';
+import { Query, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import {db, getProjectId} from './firebaseConfig';
 import fs from 'fs';
 import path from 'path';
@@ -178,5 +178,178 @@ export async function deleteDocument(collection: string, id: string) {
     return { content: [{ type: 'text', text: 'Document deleted successfully' }] };
   } catch (error) {
     return { content: [{ type: 'text', text: `Error deleting document: ${(error as Error).message}` }], isError: true };
+  }
+}
+
+export async function updateArrayField(collection: string, id: string, field: string, value: any, operation: 'add' | 'remove') {
+  try {
+    if (!db) {
+      return { content: [{ type: 'text', text: 'Firebase is not initialized. SERVICE_ACCOUNT_KEY_PATH environment variable is required.' }], isError: true };
+    }
+    
+    const docRef = db.collection(collection).doc(id);
+    const doc = await docRef.get();
+    
+    if (!doc.exists) {
+      return { content: [{ type: 'text', text: 'Document not found' }], isError: true };
+    }
+    
+    // Create update object with array operation
+    const updateData: any = {};
+    if (operation === 'add') {
+      updateData[field] = FieldValue.arrayUnion(value);
+    } else {
+      updateData[field] = FieldValue.arrayRemove(value);
+    }
+    
+    await docRef.update(updateData);
+    
+    // Get the updated document
+    const updatedDoc = await docRef.get();
+    const data = updatedDoc.data();
+    convertTimestampsToISO(data);
+    
+    const projectId = getProjectId();
+    const consoleUrl = `https://console.firebase.google.com/project/${projectId}/firestore/data/${collection}/${id}`;
+    
+    return { 
+      content: [{ 
+        type: 'text', 
+        text: JSON.stringify({ 
+          id, 
+          url: consoleUrl, 
+          document: data,
+          operation: `Array field '${field}' ${operation === 'add' ? 'updated with new value' : 'removed value'}`
+        }) 
+      }] 
+    };
+  } catch (error) {
+    return { content: [{ type: 'text', text: `Error updating array field: ${(error as Error).message}` }], isError: true };
+  }
+}
+
+export async function querySubcollection(
+  parentCollection: string, 
+  parentField: string, 
+  parentValue: any, 
+  subcollectionName: string,
+  filters: Array<{ field: string, operator: FirebaseFirestore.WhereFilterOp, value: any }> = [],
+  limit: number = 20
+) {
+  try {
+    if (!db) {
+      return { content: [{ type: 'text', text: 'Firebase is not initialized. SERVICE_ACCOUNT_KEY_PATH environment variable is required.' }], isError: true };
+    }
+    
+    // First, query the parent collection to find the parent document
+    const parentQuery = await db.collection(parentCollection)
+      .where(parentField, '==', parentValue)
+      .limit(1)
+      .get();
+    
+    if (parentQuery.empty) {
+      return { content: [{ type: 'text', text: `No parent document found in ${parentCollection} where ${parentField} = ${parentValue}` }], isError: true };
+    }
+    
+    const parentDoc = parentQuery.docs[0];
+    const parentId = parentDoc.id;
+    const parentData = parentDoc.data();
+    
+    // Now query the subcollection
+    const subcollectionPath = `${parentCollection}/${parentId}/${subcollectionName}`;
+    let subcollectionQuery: Query = db.collection(subcollectionPath);
+    
+    // Apply filters if provided
+    for (const filter of filters) {
+      let filterValue = filter.value;
+      if (typeof filterValue === 'string' && !isNaN(Date.parse(filterValue))) {
+        filterValue = Timestamp.fromDate(new Date(filterValue));
+      }
+      subcollectionQuery = subcollectionQuery.where(filter.field, filter.operator, filterValue);
+    }
+    
+    // Apply limit
+    subcollectionQuery = subcollectionQuery.limit(limit);
+    
+    const subcollectionSnapshot = await subcollectionQuery.get();
+    const documentsData = subcollectionSnapshot.docs.map(doc => {
+      const data = doc.data();
+      convertTimestampsToISO(data);
+      return { id: doc.id, data };
+    });
+    
+    const projectId = getProjectId();
+    
+    return { 
+      content: [{ 
+        type: 'text', 
+        text: JSON.stringify({
+          parentDocument: {
+            id: parentId,
+            collection: parentCollection,
+            data: convertTimestampsToISO(parentData)
+          },
+          subcollection: {
+            path: subcollectionPath,
+            totalCount: subcollectionSnapshot.size,
+            documents: documentsData
+          }
+        }) 
+      }]
+    };
+  } catch (error) {
+    return { content: [{ type: 'text', text: `Error querying subcollection: ${(error as Error).message}` }], isError: true };
+  }
+}
+
+export async function addCadenceToZone(userId: string, zoneName: string, cadenceId: string) {
+  try {
+    if (!db) {
+      return { content: [{ type: 'text', text: 'Firebase is not initialized. SERVICE_ACCOUNT_KEY_PATH environment variable is required.' }], isError: true };
+    }
+    
+    // Path to the user's zoneList collection
+    const zoneListPath = `zone/${userId}/zoneList`;
+    
+    // Query for the zone with the specified name
+    const zoneQuery = await db.collection(zoneListPath)
+      .where('zoneName', '==', zoneName)
+      .limit(1)
+      .get();
+    
+    if (zoneQuery.empty) {
+      return { content: [{ type: 'text', text: `No zone found with name "${zoneName}" for user ${userId}` }], isError: true };
+    }
+    
+    const zoneDoc = zoneQuery.docs[0];
+    const zoneId = zoneDoc.id;
+    
+    // Add cadenceId to the cadenceIds array using arrayUnion to prevent duplicates
+    await db.collection(zoneListPath).doc(zoneId).update({
+      cadenceIds: FieldValue.arrayUnion(cadenceId)
+    });
+    
+    // Get the updated zone document
+    const updatedZoneDoc = await db.collection(zoneListPath).doc(zoneId).get();
+    const zoneData = updatedZoneDoc.data();
+    convertTimestampsToISO(zoneData);
+    
+    const projectId = getProjectId();
+    const consoleUrl = `https://console.firebase.google.com/project/${projectId}/firestore/data/${zoneListPath}/${zoneId}`;
+    
+    return { 
+      content: [{ 
+        type: 'text', 
+        text: JSON.stringify({
+          message: `Successfully added cadence ${cadenceId} to zone "${zoneName}"`,
+          zoneId,
+          userId,
+          url: consoleUrl,
+          zoneData
+        }) 
+      }]
+    };
+  } catch (error) {
+    return { content: [{ type: 'text', text: `Error adding cadence to zone: ${(error as Error).message}` }], isError: true };
   }
 }
