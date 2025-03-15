@@ -36,7 +36,7 @@ class FirebaseMcpServer {
       tools: [
         {
           name: 'firestore_add_document',
-          description: 'Add a document to a Firestore collection',
+          description: 'Add a document to a Firestore collection with optional custom ID',
           inputSchema: {
             type: 'object',
             properties: {
@@ -47,6 +47,10 @@ class FirebaseMcpServer {
               data: {
                 type: 'object',
                 description: 'Document data'
+              },
+              id: {
+                type: 'string',
+                description: 'Optional custom document ID. If not provided, Firestore will auto-generate an ID'
               }
             },
             required: ['collection', 'data']
@@ -333,7 +337,7 @@ class FirebaseMcpServer {
       const { name, arguments: args = {} } = request.params;
       switch (name) {
         case 'firestore_add_document':
-          return addDocument(args.collection as string, args.data as object);
+          return addDocument(args.collection as string, args.data as object, args.id as string | undefined);
         case 'firestore_list_documents':
           return listDocuments(
             args.collection as string,

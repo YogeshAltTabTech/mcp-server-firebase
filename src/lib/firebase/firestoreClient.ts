@@ -116,13 +116,23 @@ export async function listDocuments(collection: string, filters: Array<{ field: 
   }
 }
 
-export async function addDocument(collection: string, data: any) {
+export async function addDocument(collection: string, data: any, id?: string) {
   try {
     if (!db) {
       return { content: [{ type: 'text', text: 'Firebase is not initialized. SERVICE_ACCOUNT_KEY_PATH environment variable is required.' }], isError: true };
     }
     
-    const docRef = await db.collection(collection).add(data);
+    let docRef;
+    
+    if (id) {
+      // Use custom ID with set() method
+      docRef = db.collection(collection).doc(id);
+      await docRef.set(data);
+    } else {
+      // Use auto-generated ID with add() method
+      docRef = await db.collection(collection).add(data);
+    }
+    
     const projectId = getProjectId();
     convertTimestampsToISO(data);
     const consoleUrl = `https://console.firebase.google.com/project/${projectId}/firestore/data/${collection}/${docRef.id}`;
