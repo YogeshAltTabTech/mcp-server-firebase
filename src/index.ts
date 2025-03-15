@@ -1,7 +1,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
-import { addDocument, getDocument, updateDocument, deleteDocument, listDocuments, list_collections, updateArrayField, querySubcollection, addCadenceToZone } from './lib/firebase/firestoreClient';
+import { addDocument, getDocument, updateDocument, deleteDocument, listDocuments, list_collections, updateArrayField, querySubcollection, addCadenceToZone, getCurrentTimestamp } from './lib/firebase/firestoreClient';
 import { db } from './lib/firebase/firebaseConfig';
 import { listDirectoryFiles, getFileInfo } from './lib/firebase/storageClient';
 import { getUserByIdOrEmail } from './lib/firebase/authClient';
@@ -344,6 +344,15 @@ class FirebaseMcpServer {
             properties: {},
             required: []
           }
+        },
+        {
+          name: 'firestore_get_current_timestamp',
+          description: 'Get the current server timestamp from Firestore in various formats',
+          inputSchema: {
+            type: 'object',
+            properties: {},
+            required: []
+          }
         }
         ]
     }));
@@ -413,6 +422,8 @@ class FirebaseMcpServer {
               text: JSON.stringify({ uuid }) 
             }] 
           };
+        case 'firestore_get_current_timestamp':
+          return getCurrentTimestamp();
         default:
           throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
       }

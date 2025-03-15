@@ -363,3 +363,35 @@ export async function addCadenceToZone(userId: string, zoneName: string, cadence
     return { content: [{ type: 'text', text: `Error adding cadence to zone: ${(error as Error).message}` }], isError: true };
   }
 }
+
+export async function getCurrentTimestamp() {
+  try {
+    if (!db) {
+      return { content: [{ type: 'text', text: 'Firebase is not initialized. SERVICE_ACCOUNT_KEY_PATH environment variable is required.' }], isError: true };
+    }
+    
+    // Create a timestamp for the current server time
+    const timestamp = Timestamp.now();
+    
+    // Convert to various useful formats
+    const isoString = timestamp.toDate().toISOString();
+    const seconds = timestamp.seconds;
+    const nanoseconds = timestamp.nanoseconds;
+    
+    return { 
+      content: [{ 
+        type: 'text', 
+        text: JSON.stringify({
+          timestamp: {
+            seconds,
+            nanoseconds
+          },
+          isoString,
+          jsDate: isoString
+        }) 
+      }] 
+    };
+  } catch (error) {
+    return { content: [{ type: 'text', text: `Error getting timestamp: ${(error as Error).message}` }], isError: true };
+  }
+}
