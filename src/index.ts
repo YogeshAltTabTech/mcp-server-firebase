@@ -5,7 +5,6 @@ import { addDocument, getDocument, updateDocument, deleteDocument, listDocuments
 import { db } from './lib/firebase/firebaseConfig';
 import { listDirectoryFiles, getFileInfo } from './lib/firebase/storageClient';
 import { getUserByIdOrEmail } from './lib/firebase/authClient';
-import { getFirebaseKnowledge } from './lib/firebase/knowledgeBase';
 
 class FirebaseMcpServer {
   private server: Server;
@@ -326,20 +325,6 @@ class FirebaseMcpServer {
             },
             required: ['userId', 'zoneName', 'cadenceId']
           }
-        },
-        {
-          name: 'firebase_knowledge',
-          description: 'Get knowledge about Firebase collections, schemas, and usage patterns. Provides documentation on how to work with the Firebase database structure.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              topic: {
-                type: 'string',
-                description: 'Optional specific topic to retrieve information about. Available topics: collections, relationships, best practices, or any collection name (users, zone, cadence, goal, etc.)'
-              }
-            },
-            required: []
-          }
         }
         ]
     }));
@@ -401,8 +386,6 @@ class FirebaseMcpServer {
             args.zoneName as string,
             args.cadenceId as string
           );
-        case 'firebase_knowledge':
-          return getFirebaseKnowledge(args.topic as string | undefined);
         default:
           throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
       }
