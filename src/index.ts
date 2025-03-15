@@ -5,6 +5,12 @@ import { addDocument, getDocument, updateDocument, deleteDocument, listDocuments
 import { db } from './lib/firebase/firebaseConfig';
 import { listDirectoryFiles, getFileInfo } from './lib/firebase/storageClient';
 import { getUserByIdOrEmail } from './lib/firebase/authClient';
+import { v4 as uuidv4 } from 'uuid';
+
+// Function to generate UUID
+function generateUUID() {
+  return uuidv4();
+}
 
 class FirebaseMcpServer {
   private server: Server;
@@ -329,6 +335,15 @@ class FirebaseMcpServer {
             },
             required: ['userId', 'zoneName', 'cadenceId']
           }
+        },
+        {
+          name: 'generate_uuid',
+          description: 'Generate a random UUID v4 string in the format "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"',
+          inputSchema: {
+            type: 'object',
+            properties: {},
+            required: []
+          }
         }
         ]
     }));
@@ -390,6 +405,14 @@ class FirebaseMcpServer {
             args.zoneName as string,
             args.cadenceId as string
           );
+        case 'generate_uuid':
+          const uuid = generateUUID();
+          return { 
+            content: [{ 
+              type: 'text', 
+              text: JSON.stringify({ uuid }) 
+            }] 
+          };
         default:
           throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
       }
