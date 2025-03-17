@@ -122,21 +122,27 @@ export async function addDocument(collection: string, data: any, id?: string) {
       return { content: [{ type: 'text', text: 'Firebase is not initialized. SERVICE_ACCOUNT_KEY_PATH environment variable is required.' }], isError: true };
     }
     
+    // Check if data has createdAt field and replace it with server timestamp
+    const dataToSave = { ...data };
+    if ('createdAt' in dataToSave) {
+      dataToSave.createdAt = FieldValue.serverTimestamp();
+    }
+    
     let docRef;
     
     if (id) {
       // Use custom ID with set() method
       docRef = db.collection(collection).doc(id);
-      await docRef.set(data);
+      await docRef.set(dataToSave);
     } else {
       // Use auto-generated ID with add() method
-      docRef = await db.collection(collection).add(data);
+      docRef = await db.collection(collection).add(dataToSave);
     }
     
     const projectId = getProjectId();
-    convertTimestampsToISO(data);
+    convertTimestampsToISO(dataToSave);
     const consoleUrl = `https://console.firebase.google.com/project/${projectId}/firestore/data/${collection}/${docRef.id}`;
-    return { content: [{ type: 'text', text: JSON.stringify({ id: docRef.id, url: consoleUrl, document: data }) }] };
+    return { content: [{ type: 'text', text: JSON.stringify({ id: docRef.id, url: consoleUrl, document: dataToSave }) }] };
   } catch (error) {
     return { content: [{ type: 'text', text: `Error adding document: ${(error as Error).message}` }], isError: true };
   }
