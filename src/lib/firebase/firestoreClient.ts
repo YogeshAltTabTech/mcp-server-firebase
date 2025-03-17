@@ -373,22 +373,14 @@ export async function getCurrentTimestamp() {
     // Create a timestamp for the current server time
     const timestamp = Timestamp.now();
     
-    // Convert to various useful formats
+    // Convert to ISO 8601 format
     const isoString = timestamp.toDate().toISOString();
-    const seconds = timestamp.seconds;
-    const nanoseconds = timestamp.nanoseconds;
     
+    // Return the ISO 8601 formatted timestamp
     return { 
       content: [{ 
         type: 'text', 
-        text: JSON.stringify({
-          timestamp: {
-            seconds,
-            nanoseconds
-          },
-          isoString,
-          jsDate: isoString
-        }) 
+        text: isoString
       }] 
     };
   } catch (error) {
