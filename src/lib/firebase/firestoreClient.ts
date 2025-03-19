@@ -125,7 +125,16 @@ export async function addDocument(collection: string, data: any, id?: string) {
     // Check if data has createdAt field and replace it with server timestamp
     const dataToSave = { ...data };
     if ('createdAt' in dataToSave) {
-      dataToSave.createdAt = FieldValue.serverTimestamp();
+      // For collections that start with "network", store createdAt as string
+      if (collection.startsWith('network')) {
+        // Convert current timestamp to ISO string if createdAt isn't already a string
+        if (typeof dataToSave.createdAt !== 'string') {
+          dataToSave.createdAt = new Date().toISOString();
+        }
+      } else {
+        // For all other collections, use server timestamp as before
+        dataToSave.createdAt = FieldValue.serverTimestamp();
+      }
     }
     
     let docRef;
