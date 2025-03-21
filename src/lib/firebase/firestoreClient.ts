@@ -2,6 +2,13 @@ import { Query, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import {db, getProjectId} from './firebaseConfig';
 import fs from 'fs';
 import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+
+// Function to generate UUID
+function generateUUID() {
+  return uuidv4();
+}
+
 
 export async function list_collections(documentPath?: string, limit: number = 20, pageToken?: string) {
   try {
@@ -121,9 +128,20 @@ export async function addDocument(collection: string, data: any, id?: string) {
     if (!db) {
       return { content: [{ type: 'text', text: 'Firebase is not initialized. SERVICE_ACCOUNT_KEY_PATH environment variable is required.' }], isError: true };
     }
+
+    id = id || generateUUID();
     
     // Check if data has createdAt field and replace it with server timestamp
     const dataToSave = { ...data };
+    
+    // Assign document ID to specific fields if they exist in the data
+    const idFields = ['id', 'cadenceId', 'goalId', 'milestoneId', 'syncId', 'experienceId'];
+    for (const field of idFields) {
+      if (field in dataToSave) {
+        dataToSave[field] = id;
+      }
+    }
+    
     if ('createdAt' in dataToSave) {
       // For collections that start with "network", store createdAt as string
       if (collection.startsWith('network')) {
@@ -217,6 +235,11 @@ export async function updateArrayField(collection: string, id: string, field: st
     
     if (!doc.exists) {
       return { content: [{ type: 'text', text: 'Document not found' }], isError: true };
+    }
+    
+    // If operation is 'add' and value is an object with eventId, assign UUID to it
+    if (operation === 'add' && value && typeof value === 'object' && 'eventId' in value) {
+      value = { ...value, eventId: generateUUID() };
     }
     
     // Create update object with array operation
@@ -388,14 +411,14 @@ export async function getCurrentTimestamp() {
     // Create a timestamp for the current server time
     const timestamp = Timestamp.now();
     
-    // Convert to ISO 8601 format
-    const isoString = timestamp.toDate().toISOString();
+    // Get Unix timestamp in seconds
+    const unixTimestamp = timestamp.seconds;
     
-    // Return the ISO 8601 formatted timestamp
+    // Return the Unix timestamp in seconds
     return { 
       content: [{ 
         type: 'text', 
-        text: isoString
+        text: unixTimestamp.toString()
       }] 
     };
   } catch (error) {

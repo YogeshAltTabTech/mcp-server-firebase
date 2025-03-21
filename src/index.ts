@@ -5,12 +5,6 @@ import { addDocument, getDocument, updateDocument, deleteDocument, listDocuments
 import { db } from './lib/firebase/firebaseConfig';
 import { listDirectoryFiles, getFileInfo } from './lib/firebase/storageClient';
 import { getUserByIdOrEmail } from './lib/firebase/authClient';
-import { v4 as uuidv4 } from 'uuid';
-
-// Function to generate UUID
-function generateUUID() {
-  return uuidv4();
-}
 
 class FirebaseMcpServer {
   private server: Server;
@@ -68,19 +62,19 @@ class FirebaseMcpServer {
           inputSchema: {
             type: 'object',
             properties: {
-            documentPath: {
-              type: 'string',
-              description: 'Optional parent document path'
-            },
-            limit: {
-              type: 'number',
-              description: 'Number of collections to return',
-              default: 20
-            },
-            pageToken: {
-              type: 'string',
-              description: 'Token for pagination to get the next page of results'
-            }
+              documentPath: {
+                type: 'string',
+                description: 'Optional parent document path'
+              },
+              limit: {
+                type: 'number',
+                description: 'Number of collections to return',
+                default: 20
+              },
+              pageToken: {
+                type: 'string',
+                description: 'Token for pagination to get the next page of results'
+              }
             },
             required: []
           }
@@ -117,15 +111,15 @@ class FirebaseMcpServer {
                   required: ['field', 'operator', 'value']
                 }
               },
-            limit: {
-              type: 'number',
-              description: 'Number of documents to return',
-              default: 20
-            },
-            pageToken: {
-              type: 'string',
-              description: 'Token for pagination to get the next page of results'
-            }
+              limit: {
+                type: 'number',
+                description: 'Number of documents to return',
+                default: 20
+              },
+              pageToken: {
+                type: 'string',
+                description: 'Token for pagination to get the next page of results'
+              }
             },
             required: ['collection']
           }
@@ -336,25 +330,7 @@ class FirebaseMcpServer {
             required: ['userId', 'zoneName', 'cadenceId']
           }
         },
-        {
-          name: 'generate_uuid',
-          description: 'Generate a random UUID v4 string in the format "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"',
-          inputSchema: {
-            type: 'object',
-            properties: {},
-            required: []
-          }
-        },
-        {
-          name: 'firestore_get_current_timestamp',
-          description: 'Get the current server timestamp from Firestore in various formats',
-          inputSchema: {
-            type: 'object',
-            properties: {},
-            required: []
-          }
-        }
-        ]
+      ]
     }));
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -393,10 +369,10 @@ class FirebaseMcpServer {
           return getFileInfo(args.filePath as string);
         case 'firestore_update_array_field':
           return updateArrayField(
-            args.collection as string, 
-            args.id as string, 
-            args.field as string, 
-            args.value, 
+            args.collection as string,
+            args.id as string,
+            args.field as string,
+            args.value,
             args.operation as 'add' | 'remove'
           );
         case 'firestore_query_subcollection':
@@ -414,16 +390,6 @@ class FirebaseMcpServer {
             args.zoneName as string,
             args.cadenceId as string
           );
-        case 'generate_uuid':
-          const uuid = generateUUID();
-          return { 
-            content: [{ 
-              type: 'text', 
-              text: JSON.stringify({ uuid }) 
-            }] 
-          };
-        case 'firestore_get_current_timestamp':
-          return getCurrentTimestamp();
         default:
           throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
       }
